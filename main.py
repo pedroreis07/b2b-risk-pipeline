@@ -1,5 +1,5 @@
 def main():
-    print("Hello from b2b-risk-pipeline!")
+    pass
 
 
 if __name__ == "__main__":
