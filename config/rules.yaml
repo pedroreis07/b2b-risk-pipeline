@@ -1,0 +1,36 @@
+rules:
+  - column: payer_status
+    operator: "!="
+    value: "ATIVO"
+    points: 50
+    reason: payer_cnpj_inactive
+
+  - column: receiver_status
+    operator: "!="
+    value: "ATIVO"
+    points: 50
+    reason: receiver_cnpj_inactive
+
+  - column: receiver_company_age
+    operator: "<"
+    value: 1
+    points: 10
+    reason: receiver_less_than_1_year
+
+  - column: payer_company_age
+    operator: "<"
+    value: 1
+    points: 10
+    reason: payer_less_than_1_year
+
+  - column: amount
+    operator: ">"
+    compare_column: payer_capital_stock
+    points: 20
+    reason: amount_over_payer_capital
+
+  - column: amount
+    operator: ">"
+    value: 100_000
+    points: 10
+    reason: amount_over_100k
