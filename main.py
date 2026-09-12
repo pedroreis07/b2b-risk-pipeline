@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from src.config import settings
-from src.db import create_redis_client
+from src.db import create_postgres_pool, create_redis_client, ensure_schema
 from src.process import process_files
 
 
@@ -13,6 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 redis_client = create_redis_client()
+postgres_pool = create_postgres_pool()
 
 
 def main():
@@ -23,12 +24,10 @@ def main():
         logger.warning("No files were found in %s", folder)
         return
 
-    output_dir = Path(settings.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_schema(postgres_pool)
 
     for file in files:
-        output_path = output_dir / file.name
-        process_files(file, output_path, redis_client)
+        process_files(file, redis_client, postgres_pool)
 
 
 if __name__ == "__main__":

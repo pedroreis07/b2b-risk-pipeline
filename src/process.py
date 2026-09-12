@@ -2,6 +2,8 @@ import logging
 from pathlib import Path
 
 import polars as pl
+from psycopg import Connection
+from psycopg_pool import ConnectionPool
 from redis import Redis
 
 from src.pipeline.transforms import (
@@ -9,8 +11,8 @@ from src.pipeline.transforms import (
     add_processed_date_column,
     add_score_columns,
     extract_cnpjs,
+    insert_lf_to_pg,
     reorder_columns,
-    write_results,
 )
 from src.pipeline.validators import validate_file
 from src.rules.engine import load_rules
@@ -22,8 +24,8 @@ logger = logging.getLogger(__name__)
 
 def process_files(
     file: Path,
-    output_path: Path,
     redis_client: Redis,
+    postgres_pool: ConnectionPool[Connection],
 ) -> None:
     validate_file(file)
 
@@ -55,13 +57,10 @@ def process_files(
     lf = add_hash_column(lf)
     lf = add_processed_date_column(lf)
     lf = reorder_columns(lf)
+    rows_inserted = insert_lf_to_pg(lf, postgres_pool)
 
-    write_results(lf, output_path)
-
-    total_rows = lf.select(pl.len()).collect().item()
     logger.info(
-        "Processed %s -> %s (%d rows)",
+        "Processed %s -> database (%d rows)",
         file.name,
-        output_path,
-        total_rows,
+        rows_inserted,
     )

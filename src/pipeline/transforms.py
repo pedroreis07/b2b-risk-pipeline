@@ -1,8 +1,11 @@
+import io
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import polars as pl
+from psycopg import Connection
+from psycopg_pool import ConnectionPool
 
 
 HASH_FIELDS = (
@@ -86,7 +89,24 @@ def reorder_columns(lf: pl.LazyFrame) -> pl.LazyFrame:
     return lf.select(LF_FIELDS)
 
 
-def write_results(lf: pl.LazyFrame, output_path: Path) -> None:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    lf.sink_parquet(output_path)
+def insert_lf_to_pg(lf: pl.LazyFrame, postgres_pool: ConnectionPool[Connection]) -> int:
+    total_rows = 0
+    table_name = "transactions_risk_analysis"
 
+    with (
+        postgres_pool.connection() as conn,
+        conn.transaction(),
+        conn.cursor() as cur,
+        cur.copy(f"COPY {table_name} FROM STDIN WITH (FORMAT CSV)") as copy,
+    ):
+
+        def write_batch(batch_df: pl.DataFrame) -> None:
+            nonlocal total_rows
+            buf = io.BytesIO()
+            batch_df.write_csv(buf, include_header=False)
+            copy.write(buf.getvalue())
+            total_rows += batch_df.height
+
+        lf.sink_batches(write_batch, chunk_size=50_000, maintain_order=False)  # type: ignore[reportCallIssue]
+
+    return total_rows
