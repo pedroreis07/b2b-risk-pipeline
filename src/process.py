@@ -16,6 +16,7 @@ from src.pipeline.transforms import (
 )
 from src.pipeline.validators import validate_file
 from src.rules.engine import load_rules
+from src.services import AsyncHttpManager
 from src.services.cnpj import enrich_cnpjs
 
 
@@ -26,11 +27,12 @@ def process_files(
     file: Path,
     redis_client: Redis,
     postgres_pool: ConnectionPool[Connection],
+    http_manager: AsyncHttpManager,
 ) -> None:
     validate_file(file)
 
     cnpj_set = extract_cnpjs(file)
-    cnpj_data = enrich_cnpjs(cnpj_set, redis_client)
+    cnpj_data = enrich_cnpjs(cnpj_set, redis_client, http_manager)
     rf_cache_lf = pl.from_dicts(list(cnpj_data.values())).lazy()
     payer_lf = rf_cache_lf.rename(
         {

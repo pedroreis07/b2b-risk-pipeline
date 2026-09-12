@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
 
 import polars as pl
@@ -17,6 +18,7 @@ OPERATORS: dict[str, Callable] = {
 }
 
 
+@lru_cache(maxsize=1)
 def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
     path = path or settings.rules_path
 

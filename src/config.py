@@ -18,14 +18,30 @@ class Settings(BaseSettings):
     pg_pool_max_idle: int = Field(default=30, ge=30, alias="PG_POOL_MAX_IDLE")
 
     redis_dsn: RedisDsn = Field(alias="REDIS_DSN")
+    redis_pool_max_size: int = Field(default=10, ge=1, alias="REDIS_POOL_MAX_SIZE")
+    redis_pool_timeout: int = Field(default=20, ge=20, alias="REDIS_POOL_TIMEOUT")
+    redis_health_check_interval: int = Field(
+        default=30, ge=30, alias="REDIS_HEALTH_CHECK_INTERVAL"
+    )
+    redis_socket_timeout: float = Field(
+        default=5.0, ge=5.0, alias="REDIS_SOCKET_TIMEOUT"
+    )
+    redis_socket_connect_timeout: float = Field(
+        default=3.0, ge=3.0, alias="REDIS_SOCKET_CONNECT_TIMEOUT"
+    )
 
     rules_path: Path = Field(
         default=BASE_DIR / "config" / "rules.yaml", alias="RULES_PATH"
     )
     data_dir: Path = Field(default=BASE_DIR / "data", alias="DATA_DIR")
+    api_semaphore_limit: int = Field(default=30, alias="API_CALL_SEMAPHORE_LIMIT")
+    api_call_timeout: int = Field(default=10, alias="API_CALL_TIMEOUT")
+    api_keepalive_expiry: float = Field(
+        default=30.0, ge=30.0, alias="API_KEEPALIVE_EXPIRY"
+    )
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", frozen=True, extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", frozen=True
     )
 
 
