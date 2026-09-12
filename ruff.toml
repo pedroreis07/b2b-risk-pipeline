@@ -4,34 +4,34 @@ indent-width = 4
 
 [lint]
 select = [
-    "E",
-    "W",
-    "F",
-    "B",
-    "UP",
-    "I",
-    "SIM",
-    "RUF",
-    "C90",
-    "DTZ",
-    "T20",
-    "LOG",
-    "G",
-    "PTH",
-    "C4",
-    "S",
-    "PERF",
-    "RET",
-    "ARG",
-    "ERA",
+  "E",
+  "W",
+  "F",
+  "B",
+  "UP",
+  "I",
+  "SIM",
+  "RUF",
+  "C90",
+  "DTZ",
+  "T20",
+  "LOG",
+  "G",
+  "PTH",
+  "C4",
+  "S",
+  "PERF",
+  "RET",
+  "ARG",
+  "ERA",
 ]
 ignore = [
-    "E501",
-    "S101",
-    "SIM108",
+  "E501",
+  "S101",
+  "SIM108",
 ]
 fixable = ["ALL"]
-unfixable = []
+unfixable = ["F401"]
 
 [lint.per-file-ignores]
 "tests/**/*" = ["S101", "ARG001", "ARG002"]
