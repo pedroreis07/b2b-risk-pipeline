@@ -1,22 +1,12 @@
-from src.pipeline.transforms import (
-    add_hash_column,
-    add_processed_date_column,
-    add_score_columns,
-    extract_cnpjs,
-    format_transaction_id,
-    insert_lf_to_pg,
-    reorder_columns,
-)
+from src.pipeline.extractors import extract_cnpjs
+from src.pipeline.normalizers import finalize_pipeline_columns
+from src.pipeline.scoring import enrich_and_score
 from src.pipeline.validators import validate_file
 
 
 __all__ = [
-    "add_hash_column",
-    "add_processed_date_column",
-    "add_score_columns",
+    "enrich_and_score",
     "extract_cnpjs",
-    "format_transaction_id",
-    "insert_lf_to_pg",
-    "reorder_columns",
+    "finalize_pipeline_columns",
     "validate_file",
 ]

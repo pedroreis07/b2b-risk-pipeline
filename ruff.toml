@@ -30,8 +30,6 @@ ignore = [
   "S101",
   "SIM108",
 ]
-fixable = ["ALL"]
-unfixable = ["F401"]
 
 [lint.per-file-ignores]
 "tests/**/*" = ["S101", "ARG001", "ARG002"]

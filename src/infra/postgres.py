@@ -1,21 +1,21 @@
 import atexit
 from functools import lru_cache
 
-import redis
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 
 from src.config import settings
 
 
-QUERY = """
+SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS pipeline_audit_log (
     batch_id UUID PRIMARY KEY,
     status VARCHAR(50) NOT NULL,
     file VARCHAR(255) NOT NULL,
     total_rows INT NOT NULL DEFAULT 0,
     duration_seconds NUMERIC(6, 2) DEFAULT 0.0,
-    processed_at TIMESTAMP WITH TIME ZONE NOT NULL
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    finished_at TIMESTAMP WITH TIME ZONE
 );
 
 CREATE TABLE IF NOT EXISTS transactions_risk_analysis (
@@ -52,21 +52,7 @@ def create_postgres_pool() -> ConnectionPool[Connection]:
     return pool
 
 
-def ensure_schema(pool: ConnectionPool[Connection]) -> None:
+def ensure_schema() -> None:
+    pool = create_postgres_pool()
     with pool.connection() as conn, conn.transaction():
-        conn.execute(QUERY)
-
-
-@lru_cache(maxsize=1)
-def create_redis_client() -> redis.Redis:
-    pool = redis.BlockingConnectionPool.from_url(
-        url=settings.redis_dsn.unicode_string(),
-        max_connections=settings.redis_pool_max_size,
-        timeout=settings.redis_pool_timeout,
-        health_check_interval=settings.redis_health_check_interval,
-        socket_timeout=settings.redis_socket_timeout,
-        socket_connect_timeout=settings.redis_socket_connect_timeout,
-    )
-    client = redis.Redis(connection_pool=pool)
-    atexit.register(client.close)
-    return client
+        conn.execute(SCHEMA_SQL)

@@ -1,73 +1,61 @@
 import logging
+import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
-import polars as pl
-from psycopg import Connection
-from psycopg_pool import ConnectionPool
-from redis import Redis
-
+from src.config import SAO_PAULO_TZ
 from src.pipeline import (
-    add_hash_column,
-    add_processed_date_column,
-    add_score_columns,
+    enrich_and_score,
     extract_cnpjs,
-    format_transaction_id,
-    insert_lf_to_pg,
-    reorder_columns,
+    finalize_pipeline_columns,
     validate_file,
 )
-from src.rules.engine import load_rules
-from src.services import AsyncHttpManager
-from src.services.cnpj import enrich_cnpjs
+from src.services import (
+    enrich_cnpjs,
+    load_transactions_to_postgres,
+    record_batch_completed,
+    record_batch_failed,
+    record_batch_start,
+)
 
 
 logger = logging.getLogger(__name__)
 
 
-def process_files(
-    file: Path,
-    redis_client: Redis,
-    postgres_pool: ConnectionPool[Connection],
-    http_manager: AsyncHttpManager,
-) -> None:
+def process_file(file: Path) -> int:
     validate_file(file)
 
     batch_id = uuid.uuid4()
+    started_at = datetime.now(tz=SAO_PAULO_TZ)
+    start_time = time.perf_counter()
 
-    cnpj_set = extract_cnpjs(file)
-    cnpj_data = enrich_cnpjs(cnpj_set, redis_client, http_manager)
-    rf_cache_lf = pl.from_dicts(list(cnpj_data.values())).lazy()
-    payer_lf = rf_cache_lf.rename(
-        {
-            "status": "payer_status",
-            "company_age": "payer_company_age",
-            "capital_stock": "payer_capital_stock",
-        }
-    )
-    receiver_lf = rf_cache_lf.rename(
-        {
-            "status": "receiver_status",
-            "company_age": "receiver_company_age",
-        }
-    ).drop("capital_stock")
-    score_exprs, reason_exprs = load_rules()
+    record_batch_start(batch_id, file.name, started_at)
 
-    lf = add_score_columns(
-        file,
-        payer_lf,
-        receiver_lf,
-        score_exprs,
-        reason_exprs,
-    )
-    lf = format_transaction_id(lf)
-    lf = add_hash_column(lf)
-    lf = add_processed_date_column(lf)
-    lf = reorder_columns(lf)
-    rows_inserted = insert_lf_to_pg(lf, postgres_pool, file, batch_id)
+    try:
+        cnpj_set = extract_cnpjs(file)
+        cnpj_data = enrich_cnpjs(cnpj_set)
 
-    logger.info(
-        "Processed %s -> database (%d rows)",
-        file.name,
-        rows_inserted,
-    )
+        lf = enrich_and_score(file, cnpj_data)
+        lf = finalize_pipeline_columns(lf)
+
+        total_rows = load_transactions_to_postgres(lf)
+
+        duration = round(time.perf_counter() - start_time, 2)
+        finished_at = datetime.now(tz=SAO_PAULO_TZ)
+        record_batch_completed(batch_id, total_rows, duration, finished_at)
+
+        logger.info(
+            "Processed %s -> database (%d rows in %.2fs)",
+            file.name,
+            total_rows,
+            duration,
+        )
+        return total_rows
+
+    except Exception:
+        duration = round(time.perf_counter() - start_time, 2)
+        finished_at = datetime.now(tz=SAO_PAULO_TZ)
+        record_batch_failed(batch_id, duration, finished_at)
+        logger.exception("Failed to process file %s after %.2fs", file.name, duration)
+        raise

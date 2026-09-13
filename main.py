@@ -2,9 +2,13 @@ import logging
 from pathlib import Path
 
 from src.config import settings
-from src.db import create_postgres_pool, create_redis_client, ensure_schema
-from src.process import process_files
-from src.services import create_http_manager
+from src.infra import (
+    create_http_manager,
+    create_postgres_pool,
+    create_redis_client,
+    ensure_schema,
+)
+from src.orchestrator import process_file
 
 
 logging.basicConfig(
@@ -13,12 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-redis_client = create_redis_client()
-postgres_pool = create_postgres_pool()
-http_manager = create_http_manager()
 
-
-def main():
+def main() -> None:
     folder = Path(settings.data_dir)
     files = list(folder.glob("*.parquet"))
 
@@ -26,10 +26,14 @@ def main():
         logger.warning("No files were found in %s", folder)
         return
 
-    ensure_schema(postgres_pool)
+    create_redis_client()
+    create_postgres_pool()
+    create_http_manager()
+
+    ensure_schema()
 
     for file in files:
-        process_files(file, redis_client, postgres_pool, http_manager)
+        process_file(file)
 
 
 if __name__ == "__main__":

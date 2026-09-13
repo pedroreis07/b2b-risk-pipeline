@@ -17,6 +17,13 @@ OPERATORS: dict[str, Callable] = {
     "!=": pl.Expr.ne,
 }
 
+CNPJ_CACHE_SCHEMA = {
+    "cnpj": pl.String,
+    "status": pl.String,
+    "company_age": pl.Float64,
+    "capital_stock": pl.Float64,
+}
+
 
 @lru_cache(maxsize=1)
 def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
@@ -45,3 +52,56 @@ def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
         reason_exprs.append(pl.when(condition).then(pl.lit(rule["reason"])))
 
     return score_exprs, reason_exprs
+
+
+def apply_risk_scoring(
+    file_lf: pl.LazyFrame,
+    payer_rf: pl.LazyFrame,
+    receiver_rf: pl.LazyFrame,
+) -> pl.LazyFrame:
+    score_exprs, reason_exprs = load_rules()
+
+    return (
+        file_lf.join(payer_rf, left_on="payer_cnpj", right_on="cnpj", how="left")
+        .join(receiver_rf, left_on="receiver_cnpj", right_on="cnpj", how="left")
+        .with_columns(
+            risk_score=pl.sum_horizontal(score_exprs),
+            score_reasons=pl.format(
+                "[{}]",
+                pl.concat_list(reason_exprs)
+                .list.drop_nulls()
+                .list.eval(pl.format('"{}"', pl.element()))
+                .list.join(","),
+            ),
+        )
+    )
+
+
+def enrich_and_score(
+    file: Path,
+    cnpj_data: dict[str, dict],
+) -> pl.LazyFrame:
+    file_lf = pl.scan_parquet(file)
+    rf_cache_lf = pl.from_dicts(
+        list(cnpj_data.values()), schema=CNPJ_CACHE_SCHEMA
+    ).lazy()
+
+    payer_lf = rf_cache_lf.rename(
+        {
+            "status": "payer_status",
+            "company_age": "payer_company_age",
+            "capital_stock": "payer_capital_stock",
+        }
+    )
+    receiver_lf = rf_cache_lf.rename(
+        {
+            "status": "receiver_status",
+            "company_age": "receiver_company_age",
+        }
+    ).drop("capital_stock")
+
+    return apply_risk_scoring(
+        file_lf,
+        payer_lf,
+        receiver_lf,
+    )

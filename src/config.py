@@ -1,4 +1,5 @@
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     Field,
@@ -9,6 +10,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BASE_DIR = Path(__file__).parent.parent
+SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 class Settings(BaseSettings):
@@ -47,4 +49,4 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()  # type: ignore
+settings = Settings()
