@@ -91,6 +91,9 @@ def enrich_cnpjs(
         else:
             cnpjs_to_fetch.append(cnpj)
 
+    if not cnpjs_to_fetch:
+        return cnpj_data
+
     fetched_results: list[dict] = http_manager.run(
         _fetch_all(cnpjs_to_fetch, http_manager)
     )
