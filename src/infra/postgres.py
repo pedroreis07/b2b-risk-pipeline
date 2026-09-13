@@ -1,10 +1,14 @@
 import atexit
+import logging
 from functools import lru_cache
 
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 
 from src.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 SCHEMA_SQL = """
@@ -40,6 +44,12 @@ CREATE TABLE IF NOT EXISTS transactions_risk_analysis (
 
 @lru_cache(maxsize=1)
 def create_postgres_pool() -> ConnectionPool[Connection]:
+    logger.info(
+        "Creating PostgreSQL pool (min=%d, max=%d, max_idle=%ds)",
+        settings.pg_pool_min_size,
+        settings.pg_pool_max_size,
+        settings.pg_pool_max_idle,
+    )
     pool: ConnectionPool[Connection] = ConnectionPool(
         conninfo=settings.pg_dsn.unicode_string(),
         max_size=settings.pg_pool_max_size,
@@ -48,7 +58,8 @@ def create_postgres_pool() -> ConnectionPool[Connection]:
         max_idle=settings.pg_pool_max_idle,
         open=True,
     )
-    atexit.register(pool.close)
+
+    atexit.register(lambda: (logger.info("Closing Postgres pool"), pool.close()))
     return pool
 
 
@@ -56,3 +67,4 @@ def ensure_schema() -> None:
     pool = create_postgres_pool()
     with pool.connection() as conn, conn.transaction():
         conn.execute(SCHEMA_SQL)
+    logger.info("Database schema verified/created")

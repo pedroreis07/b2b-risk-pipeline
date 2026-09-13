@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -6,6 +7,9 @@ import polars as pl
 import yaml
 
 from src.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 OPERATORS: dict[str, Callable] = {
@@ -32,6 +36,8 @@ def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
     with path.open() as f:
         config = yaml.safe_load(f)
 
+    logger.info("Loaded %d risk rules from %s", len(config["rules"]), path)
+
     score_exprs = []
     reason_exprs = []
 
@@ -55,32 +61,11 @@ def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
 
 
 def apply_risk_scoring(
-    file_lf: pl.LazyFrame,
-    payer_rf: pl.LazyFrame,
-    receiver_rf: pl.LazyFrame,
-) -> pl.LazyFrame:
-    score_exprs, reason_exprs = load_rules()
-
-    return (
-        file_lf.join(payer_rf, left_on="payer_cnpj", right_on="cnpj", how="left")
-        .join(receiver_rf, left_on="receiver_cnpj", right_on="cnpj", how="left")
-        .with_columns(
-            risk_score=pl.sum_horizontal(score_exprs),
-            score_reasons=pl.format(
-                "[{}]",
-                pl.concat_list(reason_exprs)
-                .list.drop_nulls()
-                .list.eval(pl.format('"{}"', pl.element()))
-                .list.join(","),
-            ),
-        )
-    )
-
-
-def enrich_and_score(
     file: Path,
     cnpj_data: dict[str, dict],
 ) -> pl.LazyFrame:
+    score_exprs, reason_exprs = load_rules()
+
     file_lf = pl.scan_parquet(file)
     rf_cache_lf = pl.from_dicts(
         list(cnpj_data.values()), schema=CNPJ_CACHE_SCHEMA
@@ -100,8 +85,19 @@ def enrich_and_score(
         }
     ).drop("capital_stock")
 
-    return apply_risk_scoring(
-        file_lf,
-        payer_lf,
-        receiver_lf,
+    logger.debug("Applying %d risk rules to %s", len(score_exprs), file.name)
+
+    return (
+        file_lf.join(payer_lf, left_on="payer_cnpj", right_on="cnpj", how="left")
+        .join(receiver_lf, left_on="receiver_cnpj", right_on="cnpj", how="left")
+        .with_columns(
+            risk_score=pl.sum_horizontal(score_exprs),
+            score_reasons=pl.format(
+                "[{}]",
+                pl.concat_list(reason_exprs)
+                .list.drop_nulls()
+                .list.eval(pl.format('"{}"', pl.element()))
+                .list.join(","),
+            ),
+        )
     )

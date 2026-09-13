@@ -1,6 +1,10 @@
+import logging
 from pathlib import Path
 
 import polars as pl
+
+
+logger = logging.getLogger(__name__)
 
 
 def extract_cnpjs(file: Path) -> set[str]:
@@ -16,4 +20,6 @@ def extract_cnpjs(file: Path) -> set[str]:
         .to_list()
     )
 
-    return set(cnpjs)
+    cnpj_set = set(cnpjs)
+    logger.info("Extracted %d unique CNPJs from %s", len(cnpj_set), file.name)
+    return cnpj_set

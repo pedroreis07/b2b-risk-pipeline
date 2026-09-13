@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def load_transactions_to_postgres(lf: pl.LazyFrame) -> int:
+    logger.info("Starting database load (batch_size=%d)", settings.batch_size)
     pool = create_postgres_pool()
     total_rows = 0
     sorted_lf = lf.sort(["transaction_id", "payload_hash"])
@@ -47,6 +48,9 @@ def load_transactions_to_postgres(lf: pl.LazyFrame) -> int:
             """)
             cur.execute("TRUNCATE staging_transactions;")
             total_rows += batch_df.height
+            logger.debug(
+                "Loaded batch: %d rows (cumulative: %d)", batch_df.height, total_rows
+            )
 
         sorted_lf.sink_batches(
             write_batch,
@@ -56,4 +60,5 @@ def load_transactions_to_postgres(lf: pl.LazyFrame) -> int:
 
         buf.close()
 
+    logger.info("Database load complete: %d total rows", total_rows)
     return total_rows

@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import logging
 from collections.abc import Coroutine
 from functools import lru_cache
 from typing import Any
@@ -7,6 +8,9 @@ from typing import Any
 import httpx
 
 from src.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class AsyncHttpManager:
@@ -23,6 +27,11 @@ class AsyncHttpManager:
 
     def get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
+            logger.info(
+                "Creating HTTP client (max_connections=%d, keepalive_expiry=%.0fs)",
+                settings.api_semaphore_limit,
+                settings.api_keepalive_expiry,
+            )
             limits = httpx.Limits(
                 max_connections=settings.api_semaphore_limit,
                 max_keepalive_connections=settings.api_semaphore_limit,
@@ -38,6 +47,7 @@ class AsyncHttpManager:
         return self.get_loop().run_until_complete(cr)
 
     def close(self) -> None:
+        logger.info("Closing HTTP manager")
         if self._client is not None and not self._client.is_closed:
             self.run(self._client.aclose())
 
@@ -47,6 +57,7 @@ class AsyncHttpManager:
 
 @lru_cache(maxsize=1)
 def create_http_manager() -> AsyncHttpManager:
+    logger.info("Creating HTTP manager")
     manager = AsyncHttpManager()
     atexit.register(manager.close)
     return manager

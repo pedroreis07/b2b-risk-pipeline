@@ -1,9 +1,13 @@
 import hashlib
+import logging
 from datetime import datetime
 
 import polars as pl
 
 from src.config import SAO_PAULO_TZ
+
+
+logger = logging.getLogger(__name__)
 
 
 HASH_FIELDS = (
@@ -62,6 +66,7 @@ def reorder_columns(lf: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def finalize_pipeline_columns(lf: pl.LazyFrame) -> pl.LazyFrame:
+    logger.debug("Finalizing pipeline columns (hash + transaction_id + processed_at)")
     lf = format_transaction_id(lf)
     lf = add_hash_column(lf)
     lf = add_processed_date_column(lf)

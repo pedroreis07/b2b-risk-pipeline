@@ -1,7 +1,11 @@
+import logging
 import uuid
 from datetime import datetime
 
 from src.infra import create_postgres_pool
+
+
+logger = logging.getLogger(__name__)
 
 
 def record_batch_start(
@@ -18,6 +22,7 @@ def record_batch_start(
             """,
             (batch_id, file_name, started_at),
         )
+    logger.debug("Audit: batch %s marked PROCESSING (file=%s)", batch_id, file_name)
 
 
 def record_batch_completed(
@@ -36,6 +41,7 @@ def record_batch_completed(
             """,
             (total_rows, duration_seconds, finished_at, batch_id),
         )
+    logger.debug("Audit: batch %s marked COMPLETED (%d rows, %.2fs)", batch_id, total_rows, duration_seconds)
 
 
 def record_batch_failed(
@@ -53,3 +59,4 @@ def record_batch_failed(
             """,
             (duration_seconds, finished_at, batch_id),
         )
+    logger.warning("Audit: batch %s marked FAILED (%.2fs)", batch_id, duration_seconds)

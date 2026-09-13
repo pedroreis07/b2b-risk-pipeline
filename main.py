@@ -26,14 +26,20 @@ def main() -> None:
         logger.warning("No files were found in %s", folder)
         return
 
+    logger.info("Found %d parquet file(s) in %s", len(files), folder)
+
     create_redis_client()
     create_postgres_pool()
     create_http_manager()
+
+    logger.info("Infrastructure initialized (Redis + PostgreSQL + HTTP)")
 
     ensure_schema()
 
     for file in files:
         process_file(file)
+
+    logger.info("All files processed successfully")
 
 
 if __name__ == "__main__":

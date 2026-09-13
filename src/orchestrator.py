@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.config import SAO_PAULO_TZ
 from src.pipeline import (
-    enrich_and_score,
+    apply_risk_scoring,
     extract_cnpjs,
     finalize_pipeline_columns,
     validate_file,
@@ -30,13 +30,14 @@ def process_file(file: Path) -> int:
     started_at = datetime.now(tz=SAO_PAULO_TZ)
     start_time = time.perf_counter()
 
+    logger.info("Starting pipeline for %s (batch_id=%s)", file.name, batch_id)
     record_batch_start(batch_id, file.name, started_at)
 
     try:
         cnpj_set = extract_cnpjs(file)
         cnpj_data = enrich_cnpjs(cnpj_set)
 
-        lf = enrich_and_score(file, cnpj_data)
+        lf = apply_risk_scoring(file, cnpj_data)
         lf = finalize_pipeline_columns(lf)
 
         total_rows = load_transactions_to_postgres(lf)
