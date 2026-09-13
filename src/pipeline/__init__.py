@@ -3,7 +3,9 @@ from src.pipeline.transforms import (
     add_processed_date_column,
     add_score_columns,
     extract_cnpjs,
+    format_transaction_id,
     insert_lf_to_pg,
+    reorder_columns,
 )
 from src.pipeline.validators import validate_file
 
@@ -13,6 +15,8 @@ __all__ = [
     "add_processed_date_column",
     "add_score_columns",
     "extract_cnpjs",
+    "format_transaction_id",
     "insert_lf_to_pg",
+    "reorder_columns",
     "validate_file",
 ]

@@ -1,4 +1,5 @@
 import logging
+import uuid
 from pathlib import Path
 
 import polars as pl
@@ -6,15 +7,16 @@ from psycopg import Connection
 from psycopg_pool import ConnectionPool
 from redis import Redis
 
-from src.pipeline.transforms import (
+from src.pipeline import (
     add_hash_column,
     add_processed_date_column,
     add_score_columns,
     extract_cnpjs,
+    format_transaction_id,
     insert_lf_to_pg,
     reorder_columns,
+    validate_file,
 )
-from src.pipeline.validators import validate_file
 from src.rules.engine import load_rules
 from src.services import AsyncHttpManager
 from src.services.cnpj import enrich_cnpjs
@@ -30,6 +32,8 @@ def process_files(
     http_manager: AsyncHttpManager,
 ) -> None:
     validate_file(file)
+
+    batch_id = uuid.uuid4()
 
     cnpj_set = extract_cnpjs(file)
     cnpj_data = enrich_cnpjs(cnpj_set, redis_client, http_manager)
@@ -56,10 +60,11 @@ def process_files(
         score_exprs,
         reason_exprs,
     )
+    lf = format_transaction_id(lf)
     lf = add_hash_column(lf)
     lf = add_processed_date_column(lf)
     lf = reorder_columns(lf)
-    rows_inserted = insert_lf_to_pg(lf, postgres_pool)
+    rows_inserted = insert_lf_to_pg(lf, postgres_pool, file, batch_id)
 
     logger.info(
         "Processed %s -> database (%d rows)",

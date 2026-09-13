@@ -9,20 +9,31 @@ from src.config import settings
 
 
 QUERY = """
+CREATE TABLE IF NOT EXISTS pipeline_audit_log (
+    batch_id UUID PRIMARY KEY,
+    status VARCHAR(50) NOT NULL,
+    file VARCHAR(255) NOT NULL,
+    total_rows INT NOT NULL DEFAULT 0,
+    duration_seconds NUMERIC(6, 2) DEFAULT 0.0,
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS transactions_risk_analysis (
-    transaction_id VARCHAR(100) NOT NULL,
+    transaction_id UUID NOT NULL,
     payer_cnpj VARCHAR(14) NOT NULL,
     receiver_cnpj VARCHAR(14) NOT NULL,
-    amount NUMERIC(15, 2),
-    payer_status VARCHAR(100),
-    receiver_status VARCHAR(100),
-    payer_company_age NUMERIC(5, 2),
-    receiver_company_age NUMERIC(5, 2),
-    payer_capital_stock NUMERIC(19, 2),
-    risk_score INTEGER,
-    score_reasons JSONB,
-    payload_hash NUMERIC(20, 0),
-    processed_at TIMESTAMP WITH TIME ZONE
+    amount NUMERIC(15, 2) NOT NULL,
+    payer_status VARCHAR(100) NOT NULL,
+    receiver_status VARCHAR(100) NOT NULL,
+    payer_company_age NUMERIC(5, 2) NOT NULL,
+    receiver_company_age NUMERIC(5, 2) NOT NULL,
+    payer_capital_stock NUMERIC(19, 2) NOT NULL,
+    risk_score INTEGER NOT NULL,
+    score_reasons JSONB NOT NULL,
+    payload_hash UUID NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL,
+
+    CONSTRAINT pk_transaction_payload PRIMARY KEY (transaction_id, payload_hash)
 );
 """
 
