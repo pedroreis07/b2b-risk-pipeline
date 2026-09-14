@@ -1,0 +1,115 @@
+name: b2b-risk-pipeline
+
+x-blkio-default: &blkio-default
+  device_read_bps:
+    - path: ${DOCKER_DISK_PATH:-/dev/sda1}
+      rate: 125mb
+  device_write_bps:
+    - path: ${DOCKER_DISK_PATH:-/dev/sda1}
+      rate: 125mb
+  device_read_iops:
+    - path: ${DOCKER_DISK_PATH:-/dev/sda1}
+      rate: 3000
+  device_write_iops:
+    - path: ${DOCKER_DISK_PATH:-/dev/sda1}
+      rate: 3000
+
+x-deploy-heavy: &deploy-heavy
+  resources:
+    limits:
+      cpus: "2.0"
+      memory: 1024M
+
+x-deploy-light: &deploy-light
+  resources:
+    limits:
+      cpus: "2.0"
+      memory: 512M
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: mysecretpassword
+  POSTGRES_DB: postgres
+
+x-worker-env: &worker-env
+  PG_DSN: "postgresql://postgres:mysecretpassword@postgres:5432/postgres"
+  PG_POOL_MAX_IDLE: ${PG_POOL_MAX_IDLE:-30}
+  PG_TRX_WORK_MEM_MB: ${PG_TRX_WORK_MEM_MB:-4.0}
+  REDIS_DSN: "redis://redis:6379/0"
+  REDIS_POOL_TIMEOUT: ${REDIS_POOL_TIMEOUT:-20}
+  REDIS_HEALTH_CHECK_INTERVAL: ${REDIS_HEALTH_CHECK_INTERVAL:-30}
+  REDIS_SOCKET_TIMEOUT: ${REDIS_SOCKET_TIMEOUT:-5.0}
+  REDIS_SOCKET_CONNECT_TIMEOUT: ${REDIS_SOCKET_CONNECT_TIMEOUT:-3.0}
+  RULES_PATH: /app/config/rules.yaml
+  DATA_DIR: /app/data
+  BATCH_SIZE: ${BATCH_SIZE:-25000}
+  API_CALL_SEMAPHORE: ${API_CALL_SEMAPHORE:-30}
+  API_CALL_TIMEOUT: ${API_CALL_TIMEOUT:-10}
+  API_KEEPALIVE_EXPIRY: ${API_KEEPALIVE_EXPIRY:-30.0}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment: *postgres-env
+    command: postgres -c shared_buffers=256MB
+    deploy: *deploy-heavy
+    blkio_config: *blkio-default
+    volumes:
+      - postgres_data:/var/lib/postgresql/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - internal_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    command: redis-server --maxmemory 384mb --maxmemory-policy volatile-lru
+    deploy: *deploy-light
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: worker
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: *worker-env
+    deploy: *deploy-heavy
+    blkio_config: *blkio-default
+    volumes:
+      - ./data:/app/data:ro
+    networks:
+      - internal_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  internal_network:
+    driver: bridge

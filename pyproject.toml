@@ -21,3 +21,14 @@ dependencies = [
 dev = [
   "ruff>=0.16.7",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+worker = "main:main"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src", "main.py"]
+

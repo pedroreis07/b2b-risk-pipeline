@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 from src.config import settings
 from src.infra import (
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    folder = Path(settings.data_dir)
+    folder = settings.data_dir
     files = list(folder.glob("*.parquet"))
 
     if not files:

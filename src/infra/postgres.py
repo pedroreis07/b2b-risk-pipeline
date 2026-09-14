@@ -44,16 +44,19 @@ CREATE TABLE IF NOT EXISTS transactions_risk_analysis (
 
 @lru_cache(maxsize=1)
 def create_postgres_pool() -> ConnectionPool[Connection]:
+    pg_pool_min_size = 0
+    pg_pool_max_size = 1
+
     logger.info(
         "Creating PostgreSQL pool (min=%d, max=%d, max_idle=%ds)",
-        settings.pg_pool_min_size,
-        settings.pg_pool_max_size,
+        pg_pool_min_size,
+        pg_pool_max_size,
         settings.pg_pool_max_idle,
     )
     pool: ConnectionPool[Connection] = ConnectionPool(
         conninfo=settings.pg_dsn.unicode_string(),
-        max_size=settings.pg_pool_max_size,
-        min_size=settings.pg_pool_min_size,
+        max_size=pg_pool_max_size,
+        min_size=pg_pool_min_size,
         check=ConnectionPool.check_connection,
         max_idle=settings.pg_pool_max_idle,
         open=True,

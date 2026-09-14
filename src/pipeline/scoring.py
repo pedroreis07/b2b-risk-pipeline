@@ -30,8 +30,8 @@ CNPJ_CACHE_SCHEMA = {
 
 
 @lru_cache(maxsize=1)
-def load_rules(path: Path | None = None) -> tuple[list[pl.Expr], list[pl.Expr]]:
-    path = path or settings.rules_path
+def load_rules() -> tuple[list[pl.Expr], list[pl.Expr]]:
+    path = settings.rules_path
 
     with path.open() as f:
         config = yaml.safe_load(f)

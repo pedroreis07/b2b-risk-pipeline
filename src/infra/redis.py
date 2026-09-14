@@ -12,14 +12,16 @@ logger = logging.getLogger(__name__)
 
 @lru_cache(maxsize=1)
 def create_redis_client() -> redis.Redis:
+    redis_pool_max_size = 1
+
     logger.info(
         "Creating Redis client (max_connections=%d, health_check=%ds)",
-        settings.redis_pool_max_size,
+        redis_pool_max_size,
         settings.redis_health_check_interval,
     )
     pool = redis.BlockingConnectionPool.from_url(
         url=settings.redis_dsn.unicode_string(),
-        max_connections=settings.redis_pool_max_size,
+        max_connections=redis_pool_max_size,
         timeout=settings.redis_pool_timeout,
         health_check_interval=settings.redis_health_check_interval,
         socket_timeout=settings.redis_socket_timeout,
