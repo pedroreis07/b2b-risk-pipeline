@@ -42,6 +42,17 @@ def load_transactions_to_postgres(lf: pl.LazyFrame) -> int:
                 copy.write(buf.getbuffer())
 
             cur.execute("""
+                UPDATE staging_transactions s
+                SET risk_score = s.risk_score + 50,
+                    score_reasons = s.score_reasons || '["payload_mutation_detected"]'::jsonb
+                WHERE EXISTS (
+                    SELECT 1 FROM transactions_risk_analysis t
+                    WHERE t.transaction_id = s.transaction_id
+                      AND t.payload_hash != s.payload_hash
+                );
+            """)
+
+            cur.execute("""
                 INSERT INTO transactions_risk_analysis
                 SELECT * FROM staging_transactions
                 ON CONFLICT (transaction_id, payload_hash) DO NOTHING;
