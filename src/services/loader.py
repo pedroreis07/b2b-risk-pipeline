@@ -43,7 +43,7 @@ def load_transactions_to_postgres(lf: pl.LazyFrame) -> int:
 
             cur.execute("""
                 UPDATE staging_transactions s
-                SET risk_score = s.risk_score + 50,
+                SET risk_score = s.risk_score + 75,
                     score_reasons = s.score_reasons || '["payload_mutation_detected"]'::jsonb
                 WHERE EXISTS (
                     SELECT 1 FROM transactions_risk_analysis t
