@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     folder = settings.data_dir
-    files = list(folder.glob("*.parquet"))
+    files = sorted(folder.glob("*.parquet"))
 
     if not files:
         logger.warning("No files were found in %s", folder)

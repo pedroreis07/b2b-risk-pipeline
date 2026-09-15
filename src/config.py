@@ -34,11 +34,18 @@ class Settings(BaseSettings):
         default=BASE_DIR / "config" / "rules.yaml", alias="RULES_PATH"
     )
     data_dir: Path = Field(default=BASE_DIR / "data", alias="DATA_DIR")
+    sorted_dir: Path = Field(
+        default=BASE_DIR / "data" / "sorted", alias="SORTED_DIR"
+    )
     batch_size: int = Field(default=25_000, ge=1, alias="BATCH_SIZE")
     api_semaphore_limit: int = Field(default=30, alias="API_CALL_SEMAPHORE_LIMIT")
     api_call_timeout: int = Field(default=10, alias="API_CALL_TIMEOUT")
     api_keepalive_expiry: float = Field(
         default=30.0, ge=30.0, alias="API_KEEPALIVE_EXPIRY"
+    )
+
+    duck_db_memory_limit_mb: int = Field(
+        default=800, ge=800, alias="DUCK_DB_MEMORY_LIMIT_MB"
     )
 
 

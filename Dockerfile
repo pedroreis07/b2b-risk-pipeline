@@ -36,5 +36,6 @@ WORKDIR /app
 COPY --chown=appuser:appgroup config /app/config
 COPY --from=builder --chown=appuser:appgroup /app/.venv /app/.venv
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app/data
+RUN mkdir -p /app/sorted && chown -R appuser:appgroup /app/sorted
 USER appuser
 CMD ["worker"]
