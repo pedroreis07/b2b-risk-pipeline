@@ -30,9 +30,11 @@ class Settings(BaseSettings):
         default=3.0, ge=3.0, alias="REDIS_SOCKET_CONNECT_TIMEOUT"
     )
 
-    rules_path: Path = Field(alias="RULES_PATH")
-    data_dir: Path = Field(alias="DATA_DIR")
-    batch_size: int = Field(default=50_000, ge=1, alias="BATCH_SIZE")
+    rules_path: Path = Field(
+        default=BASE_DIR / "config" / "rules.yaml", alias="RULES_PATH"
+    )
+    data_dir: Path = Field(default=BASE_DIR / "data", alias="DATA_DIR")
+    batch_size: int = Field(default=25_000, ge=1, alias="BATCH_SIZE")
     api_semaphore_limit: int = Field(default=30, alias="API_CALL_SEMAPHORE_LIMIT")
     api_call_timeout: int = Field(default=10, alias="API_CALL_TIMEOUT")
     api_keepalive_expiry: float = Field(

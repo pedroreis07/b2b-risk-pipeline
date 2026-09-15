@@ -15,16 +15,13 @@ x-blkio-default: &blkio-default
       rate: 3000
 
 x-deploy-heavy: &deploy-heavy
-  resources:
-    limits:
-      cpus: "2.0"
-      memory: 1024M
+  cpus: "2.0"
+  mem_limit: 1024M
+  memswap_limit: 2048M
 
 x-deploy-light: &deploy-light
-  resources:
-    limits:
-      cpus: "2.0"
-      memory: 512M
+  cpus: "2.0"
+  mem_limit: 512M
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: postgres
@@ -40,23 +37,23 @@ x-worker-env: &worker-env
   REDIS_HEALTH_CHECK_INTERVAL: ${REDIS_HEALTH_CHECK_INTERVAL:-30}
   REDIS_SOCKET_TIMEOUT: ${REDIS_SOCKET_TIMEOUT:-5.0}
   REDIS_SOCKET_CONNECT_TIMEOUT: ${REDIS_SOCKET_CONNECT_TIMEOUT:-3.0}
-  RULES_PATH: /app/config/rules.yaml
-  DATA_DIR: /app/data
+  RULES_PATH: ${RULES_PATH:-/app/config/rules.yaml}
+  DATA_DIR: ${DATA_DIR:-/app/data}
   BATCH_SIZE: ${BATCH_SIZE:-25000}
-  API_CALL_SEMAPHORE: ${API_CALL_SEMAPHORE:-30}
+  API_CALL_SEMAPHORE_LIMIT: ${API_CALL_SEMAPHORE_LIMIT:-30}
   API_CALL_TIMEOUT: ${API_CALL_TIMEOUT:-10}
   API_KEEPALIVE_EXPIRY: ${API_KEEPALIVE_EXPIRY:-30.0}
 
 services:
   postgres:
     image: postgres:18-alpine
+    <<: *deploy-heavy
     container_name: postgres
     restart: unless-stopped
     ports:
       - 5432:5432
     environment: *postgres-env
     command: postgres -c shared_buffers=256MB
-    deploy: *deploy-heavy
     blkio_config: *blkio-default
     volumes:
       - postgres_data:/var/lib/postgresql/
@@ -71,12 +68,12 @@ services:
 
   redis:
     image: redis:7-alpine
+    <<: *deploy-light
     container_name: redis
     restart: unless-stopped
     ports:
       - 6379:6379
     command: redis-server --maxmemory 384mb --maxmemory-policy volatile-lru
-    deploy: *deploy-light
     volumes:
       - redis_data:/data
     healthcheck:
@@ -91,6 +88,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    <<: *deploy-heavy
     container_name: worker
     restart: "no"
     depends_on:
@@ -99,7 +97,6 @@ services:
       redis:
         condition: service_healthy
     environment: *worker-env
-    deploy: *deploy-heavy
     blkio_config: *blkio-default
     volumes:
       - ./data:/app/data:ro
