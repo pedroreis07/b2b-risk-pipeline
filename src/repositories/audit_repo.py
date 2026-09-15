@@ -1,6 +1,7 @@
 import logging
-import uuid
 from datetime import datetime
+
+import uuid_utils as uuid
 
 from src.infra import create_postgres_pool
 
@@ -41,7 +42,12 @@ def record_batch_completed(
             """,
             (total_rows, duration_seconds, finished_at, batch_id),
         )
-    logger.debug("Audit: batch %s marked COMPLETED (%d rows, %.2fs)", batch_id, total_rows, duration_seconds)
+    logger.debug(
+        "Audit: batch %s marked COMPLETED (%d rows, %.2fs)",
+        batch_id,
+        total_rows,
+        duration_seconds,
+    )
 
 
 def record_batch_failed(

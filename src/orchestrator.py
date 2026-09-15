@@ -1,8 +1,9 @@
 import logging
 import time
-import uuid
 from datetime import datetime
 from pathlib import Path
+
+import uuid_utils as uuid
 
 from src.config import SAO_PAULO_TZ
 from src.pipeline import (
@@ -26,8 +27,9 @@ logger = logging.getLogger(__name__)
 def process_file(file: Path) -> int:
     validate_file(file)
 
-    batch_id = uuid.uuid4()
     started_at = datetime.now(tz=SAO_PAULO_TZ)
+    ns = int(started_at.timestamp() * 10**9)
+    batch_id: uuid.UUID = uuid.uuid7(nanoseconds=ns).hex
     start_time = time.perf_counter()
 
     logger.info("Starting pipeline for %s (batch_id=%s)", file.name, batch_id)
