@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Callable
 from functools import lru_cache
-from pathlib import Path
 
 import polars as pl
 import yaml
@@ -19,13 +18,6 @@ OPERATORS: dict[str, Callable] = {
     "<=": pl.Expr.le,
     "==": pl.Expr.eq,
     "!=": pl.Expr.ne,
-}
-
-CNPJ_CACHE_SCHEMA = {
-    "cnpj": pl.String,
-    "status": pl.String,
-    "company_age": pl.Float64,
-    "capital_stock": pl.Float64,
 }
 
 
@@ -61,35 +53,32 @@ def load_rules() -> tuple[list[pl.Expr], list[pl.Expr]]:
 
 
 def apply_risk_scoring(
-    file: Path,
-    cnpj_data: dict[str, dict],
+    chunk_lf: pl.LazyFrame,
+    cnpj_data_lf: pl.LazyFrame,
 ) -> pl.LazyFrame:
     score_exprs, reason_exprs = load_rules()
 
-    file_lf = pl.scan_parquet(file)
-    rf_cache_lf = pl.from_dicts(
-        list(cnpj_data.values()), schema=CNPJ_CACHE_SCHEMA
-    ).lazy()
-
-    payer_lf = rf_cache_lf.rename(
+    payer_lf = cnpj_data_lf.rename(
         {
+            "cnpj": "payer_cnpj",
             "status": "payer_status",
             "company_age": "payer_company_age",
             "capital_stock": "payer_capital_stock",
         }
     )
-    receiver_lf = rf_cache_lf.rename(
+    receiver_lf = cnpj_data_lf.rename(
         {
+            "cnpj": "receiver_cnpj",
             "status": "receiver_status",
             "company_age": "receiver_company_age",
         }
     ).drop("capital_stock")
 
-    logger.debug("Applying %d risk rules to %s", len(score_exprs), file.name)
+    logger.debug("Applying risk rules")
 
     return (
-        file_lf.join(payer_lf, left_on="payer_cnpj", right_on="cnpj", how="left")
-        .join(receiver_lf, left_on="receiver_cnpj", right_on="cnpj", how="left")
+        chunk_lf.join(payer_lf, on="payer_cnpj", how="left")
+        .join(receiver_lf, on="receiver_cnpj", how="left")
         .with_columns(
             risk_score=pl.sum_horizontal(score_exprs),
             score_reasons=pl.format(

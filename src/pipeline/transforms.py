@@ -1,14 +1,20 @@
-import hashlib
 import logging
 from datetime import datetime
 
 import polars as pl
+import polars_hash as plh
 
 from src.config import SAO_PAULO_TZ
 
 
 logger = logging.getLogger(__name__)
 
+CNPJ_DATA_LF_SCHEMA = {
+    "cnpj": pl.String,
+    "status": pl.Categorical,
+    "activity_start_date": pl.String,
+    "capital_stock": pl.Float32,
+}
 
 HASH_FIELDS = (
     "transaction_id",
@@ -36,13 +42,24 @@ FINAL_COLUMNS = (
 )
 
 
-def sha256_batch(s: pl.Series) -> pl.Series:
-    return pl.Series(
-        [
-            hashlib.sha256(x.encode("utf-8"), usedforsecurity=False).digest()[:16].hex()
-            for x in s
-        ]
+def add_company_age_column(lf: pl.LazyFrame) -> pl.LazyFrame:
+    now = datetime.now(tz=SAO_PAULO_TZ).date()
+
+    date_col = pl.col("activity_start_date").str.to_date("%Y-%m-%d")
+    age_expr = (
+        ((pl.lit(now) - date_col).dt.total_days() / 365.25).cast(pl.Float32).round(1)
     )
+
+    return lf.with_columns(company_age=age_expr).drop("activity_start_date")
+
+
+def load_cnpjs_as_lazyframe(cnpj_data: dict[str, dict]) -> pl.LazyFrame:
+    lf = pl.from_dicts(list(cnpj_data.values()), schema=CNPJ_DATA_LF_SCHEMA).lazy()
+    return add_company_age_column(lf)
+
+
+def extract_unique_cnpjs(df: pl.DataFrame) -> set[str]:
+    return set(pl.concat([df["payer_cnpj"], df["receiver_cnpj"]]).unique())
 
 
 def format_transaction_id(lf: pl.LazyFrame) -> pl.LazyFrame:
@@ -50,10 +67,8 @@ def format_transaction_id(lf: pl.LazyFrame) -> pl.LazyFrame:
 
 
 def add_hash_column(lf: pl.LazyFrame) -> pl.LazyFrame:
-    concat_expr = pl.concat_str(HASH_FIELDS, separator="|")
-    return lf.with_columns(
-        payload_hash=concat_expr.map_batches(sha256_batch, return_dtype=pl.String)
-    )
+    concat_expr = plh.concat_str(HASH_FIELDS, separator="|")
+    return lf.with_columns(payload_hash=concat_expr.chash.sha2_256().str.slice(0, 32))
 
 
 def add_processed_date_column(lf: pl.LazyFrame) -> pl.LazyFrame:

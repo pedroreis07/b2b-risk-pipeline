@@ -3,17 +3,19 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+import polars as pl
 import uuid_utils as uuid
 
 from src.config import SAO_PAULO_TZ
 from src.pipeline import (
     apply_risk_scoring,
-    extract_cnpjs,
+    extract_unique_cnpjs,
     finalize_pipeline_columns,
+    load_cnpjs_as_lazyframe,
     validate_file,
 )
 from src.services import (
-    enrich_cnpjs,
+    fetch_cnpj_data_batch,
     load_transactions_to_postgres,
     record_batch_completed,
     record_batch_failed,
@@ -36,10 +38,12 @@ def process_file(file: Path) -> int:
     record_batch_start(batch_id, file.name, started_at)
 
     try:
-        cnpj_set = extract_cnpjs(file)
-        cnpj_data = enrich_cnpjs(cnpj_set)
+        raw_lf = pl.scan_parquet(file)
+        cnpj_set = extract_unique_cnpjs(raw_lf.collect())
+        enriched_cnpjs = fetch_cnpj_data_batch(cnpj_set)
+        cnpj_data_lf = load_cnpjs_as_lazyframe(enriched_cnpjs)
 
-        lf = apply_risk_scoring(file, cnpj_data)
+        lf = apply_risk_scoring(raw_lf, cnpj_data_lf)
         lf = finalize_pipeline_columns(lf)
 
         total_rows = load_transactions_to_postgres(lf)

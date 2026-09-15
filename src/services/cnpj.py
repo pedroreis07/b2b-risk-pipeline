@@ -31,17 +31,8 @@ class CnpjApiResponse(BaseModel):
 class CnpjData(BaseModel):
     cnpj: str
     status: str
-    company_age: float
+    activity_start_date: str
     capital_stock: float
-
-
-def calc_company_age(date_string: str) -> float:
-    target_date = datetime.strptime(date_string, "%Y-%m-%d").replace(
-        tzinfo=SAO_PAULO_TZ
-    )
-    now = datetime.now(tz=SAO_PAULO_TZ)
-    delta = relativedelta(now, target_date)
-    return round(delta.years + delta.months / 12, 1)
 
 
 @retry(
@@ -63,7 +54,7 @@ async def fetch_cnpj(
         return CnpjData(
             cnpj=cnpj,
             status=api_data.descricao_situacao_cadastral,
-            company_age=calc_company_age(api_data.data_inicio_atividade),
+            activity_start_date=api_data.data_inicio_atividade,
             capital_stock=api_data.capital_social,
         ).model_dump()
 
@@ -99,7 +90,7 @@ def cache_expiration() -> int:
     return ttl
 
 
-def enrich_cnpjs(cnpj_set: set[str]) -> dict[str, dict]:
+def fetch_cnpj_data_batch(cnpj_set: set[str]) -> dict[str, dict]:
     if not cnpj_set:
         return {}
 
