@@ -16,7 +16,13 @@ SAO_PAULO_TZ = ZoneInfo("America/Sao_Paulo")
 class Settings(BaseSettings):
     pg_dsn: PostgresDsn = Field(alias="PG_DSN")
     pg_pool_max_idle: int = Field(default=30, ge=30, alias="PG_POOL_MAX_IDLE")
-    pg_trx_work_mem_mb: float = Field(default=4.0, ge=4.0, alias="PG_TRX_WORK_MEM_MB")
+    pg_trx_lock_timeout_sec: int = Field(
+        default=120, ge=120, alias="PG_TRX_LOCK_TIMEOUT_SEC"
+    )
+    pg_trx_work_mem_mb: float = Field(default=16.0, ge=16.0, alias="PG_TRX_WORK_MEM_MB")
+    pg_trx_temp_buffers_mb: float = Field(
+        default=48.0, ge=48.0, alias="PG_TRX_TEMP_BUFFERS_MB"
+    )
 
     redis_dsn: RedisDsn = Field(alias="REDIS_DSN")
     redis_pool_timeout: int = Field(default=20, ge=20, alias="REDIS_POOL_TIMEOUT")
@@ -34,10 +40,8 @@ class Settings(BaseSettings):
         default=BASE_DIR / "config" / "rules.yaml", alias="RULES_PATH"
     )
     data_dir: Path = Field(default=BASE_DIR / "data", alias="DATA_DIR")
-    sorted_dir: Path = Field(
-        default=BASE_DIR / "data" / "sorted", alias="SORTED_DIR"
-    )
-    batch_size: int = Field(default=25_000, ge=1, alias="BATCH_SIZE")
+    sorted_dir: Path = Field(default=BASE_DIR / "data" / "sorted", alias="SORTED_DIR")
+    batch_size: int = Field(default=100_000, ge=1, alias="BATCH_SIZE")
     api_semaphore_limit: int = Field(default=30, alias="API_CALL_SEMAPHORE_LIMIT")
     api_call_timeout: int = Field(default=10, alias="API_CALL_TIMEOUT")
     api_keepalive_expiry: float = Field(

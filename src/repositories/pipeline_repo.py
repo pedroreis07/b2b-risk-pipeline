@@ -15,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 def setup_staging_environment(cur: Cursor) -> None:
     cur.execute(f"SET LOCAL work_mem = '{settings.pg_trx_work_mem_mb}MB';")
+    cur.execute(f"SET LOCAL temp_buffers = '{settings.pg_trx_temp_buffers_mb}MB';")
+    cur.execute(f"SET LOCAL lock_timeout = '{settings.pg_trx_lock_timeout_sec}s';")
+    cur.execute("SET jit = off;")
+    cur.execute("SET synchronous_commit = off;")
+    cur.execute("SELECT pg_advisory_xact_lock(12345);")
 
     cur.execute("""
         CREATE TEMP TABLE IF NOT EXISTS staging_transactions
@@ -45,6 +50,8 @@ def upsert_transaction_batch(final_lf: pl.LazyFrame, cur: Cursor) -> int:
 
         with cur.copy("COPY staging_transactions FROM STDIN WITH (FORMAT CSV)") as copy:
             copy.write(buffer.getbuffer())
+
+    cur.execute("ANALYZE staging_transactions;")
 
     cur.execute("""
         UPDATE staging_transactions s
