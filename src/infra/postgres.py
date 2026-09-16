@@ -5,7 +5,7 @@ from functools import lru_cache
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
 
-from src.config import settings
+from src import settings
 
 
 logger = logging.getLogger(__name__)

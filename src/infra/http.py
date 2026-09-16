@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from src.config import settings
+from src import settings
 
 
 logger = logging.getLogger(__name__)

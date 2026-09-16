@@ -5,7 +5,7 @@ from functools import lru_cache
 import polars as pl
 import yaml
 
-from src.config import settings
+from src import settings
 
 
 logger = logging.getLogger(__name__)

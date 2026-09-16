@@ -1,13 +1,12 @@
 import logging
 
-from src.config import settings
+from src import process_file, settings
 from src.infra import (
     create_http_manager,
     create_postgres_pool,
     create_redis_client,
     ensure_schema,
 )
-from src.orchestrator import process_file
 
 
 logging.basicConfig(

@@ -7,26 +7,24 @@ import polars as pl
 import pyarrow.parquet as pq
 import uuid_utils as uuid
 
-from src.config import SAO_PAULO_TZ, settings
-from src.infra.duckdb import sort_large_parquet
-from src.pipeline import validate_file
-from src.pipeline.rules import apply_risk_scoring
-from src.pipeline.transforms import (
+from src import SAO_PAULO_TZ, settings
+from src.infra import sort_large_parquet
+from src.pipeline import (
+    apply_risk_scoring,
     extract_unique_cnpjs,
     finalize_pipeline_columns,
     load_cnpjs_as_lazyframe,
+    validate_file,
 )
-from src.repositories.audit_repo import (
+from src.repositories import (
+    pipeline_transaction_context,
     record_batch_completed,
     record_batch_failed,
     record_batch_start,
-)
-from src.repositories.pipeline_repo import (
-    pipeline_transaction_context,
     setup_staging_environment,
     upsert_transaction_batch,
 )
-from src.services.cnpj import fetch_cnpj_data_batch
+from src.services import fetch_cnpj_data_batch
 
 
 logger = logging.getLogger(__name__)

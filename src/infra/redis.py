@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import redis
 
-from src.config import settings
+from src import settings
 
 
 logger = logging.getLogger(__name__)

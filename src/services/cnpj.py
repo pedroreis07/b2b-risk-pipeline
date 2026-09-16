@@ -15,7 +15,7 @@ from tenacity import (
     wait_exponential_jitter,
 )
 
-from src.config import SAO_PAULO_TZ, settings
+from src import SAO_PAULO_TZ, settings
 from src.infra import AsyncHttpManager, create_http_manager, create_redis_client
 
 

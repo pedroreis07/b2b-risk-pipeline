@@ -3,7 +3,7 @@ from pathlib import Path
 
 import duckdb
 
-from src.config import settings
+from src import settings
 
 
 logger = logging.getLogger(__name__)

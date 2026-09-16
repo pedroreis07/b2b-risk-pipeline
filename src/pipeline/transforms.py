@@ -4,7 +4,7 @@ from datetime import datetime
 import polars as pl
 import polars_hash as plh
 
-from src.config import SAO_PAULO_TZ
+from src import SAO_PAULO_TZ
 
 
 logger = logging.getLogger(__name__)

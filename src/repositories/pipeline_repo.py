@@ -6,8 +6,8 @@ from contextlib import contextmanager
 import polars as pl
 from psycopg import Cursor
 
-from src.config import settings
-from src.infra.postgres import create_postgres_pool
+from src import settings
+from src.infra import create_postgres_pool
 
 
 logger = logging.getLogger(__name__)
