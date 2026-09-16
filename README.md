@@ -27,14 +27,19 @@ High-performance data pipeline for risk analysis of B2B financial transactions u
 
 - Docker and Docker Compose
 
-### Running
+### Setup & Running
 
-1. Place input Parquet files in `./data`:
+1. Set the disk path environment variable in `.env` for I/O throttling:
+   ```bash
+   echo "DOCKER_DISK_PATH=$(df /var/lib/docker | awk 'NR==2 {print $1}')" > .env
+   ```
+
+2. Place input Parquet files in `./data`:
    ```bash
    ls data/*.parquet
    ```
 
-2. Run the pipeline:
+3. Run the pipeline:
    ```bash
    docker compose up --build
    ```
